@@ -50,7 +50,8 @@ export function createPingLoop(state) {
    * @param {string} [source='manual'] — Why the mode changed (startup | manual | auto | idle | activity)
    */
   function setPingMode(nextMode, source = 'manual') {
-    const modeInterval = PING_MODE_INTERVALS[nextMode] ?? PING_MODE_INTERVALS.normal
+    const intervals = state.pingModeIntervals ?? PING_MODE_INTERVALS
+    const modeInterval = intervals[nextMode] ?? intervals.normal
     state.pingMode = nextMode
     state.pingModeSource = source
     state.pingInterval = modeInterval

@@ -85,26 +85,14 @@ export const ROUTER_MAX_PORT = 19289
 export const ROUTER_DEFAULT_PORT_DEV = 29280
 export const ROUTER_MAX_PORT_DEV = 29289
 
-// 📖 Dev mode uses -dev suffixed files so the local dev daemon never clashes
-// 📖 with a production install running on the same machine.
-// 📖 IMPORTANT: _isDev() is a function, not a constant, so it picks up FCM_DEV
-// 📖 changes that happen after module load (e.g. the bin entry point setting
-// 📖 FCM_DEV=1 on git checkouts). Constant exports for PID/PORT/LOG paths
-// 📖 are still computed eagerly - they are only used by the daemon child process
-// 📖 which always has FCM_DEV set before import. The TUI and dashboard use
-// 📖 getRouterPortRange() and getRouterPidPath() for dynamic resolution.
 function _isDev() { return typeof process.env.FCM_DEV !== 'undefined' ? !!process.env.FCM_DEV : false }
-const _dev = _isDev()
-export const ROUTER_PID_PATH = join(homedir(), `.free-coding-models-daemon${_dev ? '-dev' : ''}.pid`)
-export const ROUTER_PORT_PATH = join(homedir(), `.free-coding-models-daemon${_dev ? '-dev' : ''}.port`)
-export const ROUTER_LOG_PATH = join(homedir(), `.free-coding-models-daemon${_dev ? '-dev' : ''}.log`)
-export const ROUTER_TOKENS_PATH = join(homedir(), `.free-coding-models-tokens${_dev ? '-dev' : ''}.json`)
 
 // 📖 Dynamic path resolvers - used by the TUI dashboard which may have FCM_DEV
 // 📖 set after module load time (git checkout auto-detection in bin/ entry).
 export function getRouterPidPath() { return join(homedir(), `.free-coding-models-daemon${_isDev() ? '-dev' : ''}.pid`) }
 export function getRouterPortPath() { return join(homedir(), `.free-coding-models-daemon${_isDev() ? '-dev' : ''}.port`) }
 export function getRouterLogPath() { return join(homedir(), `.free-coding-models-daemon${_isDev() ? '-dev' : ''}.log`) }
+export function getRouterTokensPath() { return join(homedir(), `.free-coding-models-tokens${_isDev() ? '-dev' : ''}.json`) }
 
 // 📖 Returns effective port range for current mode (dev vs production)
 export function getRouterPortRange() {
@@ -869,7 +857,7 @@ class TokenTracker {
 }
 
 class RouterRuntime {
-  constructor({ config, port, logger, tokenPath = ROUTER_TOKENS_PATH, persistConfig = true }) {
+  constructor({ config, port, logger, tokenPath = null, persistConfig = true }) {
     this.config = config
     this.port = port
     this.logger = logger
@@ -884,7 +872,7 @@ class RouterRuntime {
     this.tokenFlushTimer = null
     this.probeTimer = null
     this.probeTimeouts = new Set()
-    this.tokenTracker = new TokenTracker(tokenPath, logger)
+    this.tokenTracker = new TokenTracker(tokenPath || getRouterTokensPath(), logger)
     this.modelCatalog = this.buildModelCatalog()
     this.probeWindows = new Map()
     this.circuit = new Map()
@@ -1543,8 +1531,8 @@ class RouterRuntime {
       lastProbeAt: this.lastProbeAt ? new Date(this.lastProbeAt).toISOString() : null,
       crashRecovered: this.crashRecovered,
       configPath: CONFIG_PATH,
-      tokenStatsPath: ROUTER_TOKENS_PATH,
-      logPath: ROUTER_LOG_PATH,
+      tokenStatsPath: getRouterTokensPath(),
+      logPath: getRouterLogPath(),
       // 📖 Probe-cache (t1): live aggregates from the persistent probe-cache.
       // 📖 Surfaced so the Web Dashboard + CLI can show cache hit rate + how many
       // 📖 broken models are currently hidden. Refreshed every /stats call.
@@ -3281,8 +3269,8 @@ class RouterRuntime {
     flushProbeCache()  // 📖 t1: persist any pending probe-cache deltas before exit
     if (this.runtimeTelemetryDirty) flushRuntimeTelemetryStore()  // 📖 t3
     try { this.server?.close() } catch {}
-    try { unlinkSync(ROUTER_PID_PATH) } catch {}
-    try { unlinkSync(ROUTER_PORT_PATH) } catch {}
+    try { unlinkSync(getRouterPidPath()) } catch {}
+    try { unlinkSync(getRouterPortPath()) } catch {}
     void sendUsageTelemetry(this.config, {}, {
       event: 'app_daemon_stop',
       mode: 'daemon',
@@ -3460,7 +3448,7 @@ export async function buildDefaultRouterSet(config = {}, maxModels, options = {}
   }
 }
 
-export function createRouterRuntimeForTest({ config, port = 0, logger = null, tokenPath = ROUTER_TOKENS_PATH } = {}) {
+export function createRouterRuntimeForTest({ config, port = 0, logger = null, tokenPath = null } = {}) {
   const testLogger = logger || {
     level: 'error',
     error() {},
@@ -3476,7 +3464,7 @@ export function createRouterRuntimeForTest({ config, port = 0, logger = null, to
     config: config || {},
     port,
     logger: testLogger,
-    tokenPath,
+    tokenPath: tokenPath || getRouterTokensPath(),
     persistConfig: false,
   })
 }
@@ -3701,10 +3689,10 @@ export async function runRouterDaemon() {
   // 📖 checkout doesn't clash with a production install on the same machine.
   // 📖 The saved config has port: 19280 (production); dev should use 29280.
   const { defaultPort: devDefault } = getRouterPortRange()
-  if (_dev && router.port !== devDefault && router.port === DEFAULT_ROUTER_SETTINGS.port) {
+  if (_isDev() && router.port !== devDefault && router.port === DEFAULT_ROUTER_SETTINGS.port) {
     router.port = devDefault
   }
-  const logger = new RouterLogger(ROUTER_LOG_PATH, router.logLevel)
+  const logger = new RouterLogger(getRouterLogPath(), router.logLevel)
   const runtime = new RouterRuntime({ config, port: router.port, logger })
   runtime.installProcessSafety()
   const server = createServer((req, res) => void runtime.handleHttp(req, res))
@@ -3714,8 +3702,8 @@ export async function runRouterDaemon() {
   runtime.port = port
   runtime.config.router.port = port
   saveConfig(runtime.config)
-  try { writeFileSync(ROUTER_PID_PATH, String(process.pid), { mode: 0o600 }) } catch (error) { logger.warn('PID file write failed', { error: error.message }) }
-  try { writeFileSync(ROUTER_PORT_PATH, String(port), { mode: 0o600 }) } catch (error) { logger.warn('Port file write failed', { error: error.message }) }
+  try { writeFileSync(getRouterPidPath(), String(process.pid), { mode: 0o600 }) } catch (error) { logger.warn('PID file write failed', { error: error.message }) }
+  try { writeFileSync(getRouterPortPath(), String(port), { mode: 0o600 }) } catch (error) { logger.warn('Port file write failed', { error: error.message }) }
   logger.info('Router daemon started', { pid: process.pid, port, host, activeSet: runtime.routerConfig().activeSet })
   void sendUsageTelemetry(runtime.config, {}, {
     event: 'app_daemon_start',
@@ -3819,10 +3807,22 @@ export async function startRouterDaemonBackground() {
 }
 
 export async function stopRouterDaemon() {
-  const pid = readNumberFile(ROUTER_PID_PATH)
-  if (!pid) return { ok: false, stopped: false, error: 'No daemon PID file found' }
+  const pidPath = getRouterPidPath()
+  let pid = readNumberFile(pidPath)
+
+  // 📖 Fallback: if the PID file is missing or invalid, try to discover the
+  // 📖 running daemon via its health port and get the PID from there.
+  if (!pid) {
+    const status = await getRouterDaemonStatus()
+    if (status.ok && status.pid) {
+      pid = status.pid
+    }
+  }
+
+  if (!pid) return { ok: false, stopped: false, error: 'No daemon PID found (file missing and port discovery failed)' }
+
   if (!isProcessAlive(pid)) {
-    try { unlinkSync(ROUTER_PID_PATH) } catch {}
+    try { unlinkSync(pidPath) } catch {}
     return { ok: true, stopped: false, stalePid: pid }
   }
   process.kill(pid, 'SIGTERM')

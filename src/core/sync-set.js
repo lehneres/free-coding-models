@@ -37,7 +37,7 @@ import {
   saveConfig,
 } from './config.js'
 import { resolveCloudflareUrl } from './ping.js'
-import { ROUTER_PID_PATH, getRouterPidPath } from './router-daemon.js'
+import { getRouterPidPath } from './router-daemon.js'
 import { existsSync, readFileSync } from 'node:fs'
 import { TIER_ORDER, parseSweToNum } from './utils.js'
 import { isRouteableProvider } from './shared-helpers.js'

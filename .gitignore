@@ -71,3 +71,4 @@ task/reports/*.md
 #    scratchpad used during competitive scans.
 ideas/new_feats_updates.md
 /web/pnpm-lock.yaml
+/.output.txt

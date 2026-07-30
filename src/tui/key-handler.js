@@ -267,7 +267,7 @@ export function createKeyHandler(ctx) {
   async function readDaemonPort() {
     try {
       const { readFileSync } = await import('node:fs')
-      const raw = readFileSync(`${process.env.HOME}/.free-coding-models-daemon.port`, 'utf8').trim()
+      const raw = readFileSync(getRouterPortPath(), 'utf8').trim()
       if (/^\d+$/.test(raw)) return Number(raw)
     } catch {}
     return null
@@ -804,7 +804,7 @@ export function createKeyHandler(ctx) {
     let port = 19280
     try {
       const { readFileSync: rfs } = await import('node:fs')
-      const portPath = `${process.env.HOME}/.free-coding-models-daemon.port`
+      const portPath = getRouterPortPath()
       const savedPort = rfs(portPath, 'utf8').trim()
       if (/^\d+$/.test(savedPort)) port = Number(savedPort)
     } catch {}
@@ -1214,7 +1214,7 @@ export function createKeyHandler(ctx) {
 
   function refreshCommandPaletteResults() {
     const query = (state.commandPaletteQuery || '').trim()
-    const tree = buildCommandPaletteTree(state.results || [])
+    const tree = buildCommandPaletteTree(state.results || [], state.config)
     // 📖 Keep collapsed view clean when query is empty, but search across the
     // 📖 full tree when users type so hidden submenu commands still appear.
     let flat

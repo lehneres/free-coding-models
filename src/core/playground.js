@@ -22,7 +22,7 @@
  */
 
 import { displayWidth, sliceOverlayLines, tintOverlayLines } from '../tui/render-helpers.js'
-import { ROUTER_PORT_PATH, getRouterPortPath } from './router-daemon.js'
+import { getRouterPortPath } from './router-daemon.js'
 import { existsSync, readFileSync } from 'node:fs'
 import { themeColors } from '../tui/theme.js'
 
