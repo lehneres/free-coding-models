@@ -18,23 +18,19 @@ $STD apt install -y \
   git \
   ca-certificates \
   curl \
-  imagemagick
+  imagemagick \
+  make \
+  g++
 msg_ok "Installed Dependencies"
 
 NODE_VERSION="22" setup_nodejs
 
-msg_info "Cloning free-coding-models"
+msg_info "Installing Free Coding Models"
 $STD git clone https://github.com/lehneres/free-coding-models.git /opt/free-coding-models
 cd /opt/free-coding-models
-msg_ok "Cloned free-coding-models"
-
-msg_info "Installing dependencies"
 $STD npm install --include=dev
-msg_ok "Installed dependencies"
-
-msg_info "Building web dashboard"
 $STD npm run build:web
-msg_ok "Built web dashboard"
+msg_ok "Installed Free Coding Models"
 
 msg_info "Creating Service"
 cat <<EOF >/etc/systemd/system/fcm-daemon.service
