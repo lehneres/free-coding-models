@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
 
+function get_header() {
+  cat << "EOF"
+  _____                  ____          _ _             __  __           _      _     
+ |  ___| __ ___  ___    / ___|___   __| (_)_ __   __ _|  \/  | ___   __| | ___| |___ 
+ | |_ | '__/ _ \/ _ \  | |   / _ \ / _` | | '_ \ / _` | |\/| |/ _ \ / _` |/ _ \ / __|
+ |  _|| | |  __/  __/  | |__| (_) | (_| | | | | | (_| | |  | | (_) | (_| |  __/ \__ \
+ |_|  |_|  \___|\___|   \____\___/ \__,_|_|_| |_|\__, |_|  |_|\___/ \__,_|\___|_|___/
+                                                 |___/                               
+EOF
+}
+
 # Copyright (c) 2021-2026 lehneres
 # Author: lehneres (https://github.com/lehneres)
 # License: MIT | https://github.com/lehneres/free-coding-models/raw/main/LICENSE
