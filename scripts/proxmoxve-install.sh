@@ -33,9 +33,9 @@ $STD npm run build:web
 msg_ok "Installed Free Coding Models"
 
 msg_info "Creating Service"
-cat <<EOF >/etc/systemd/system/fcm-daemon.service
+cat <<EOF >/etc/systemd/system/fcm-web.service
 [Unit]
-Description=Free Coding Models Router Daemon
+Description=Free Coding Models Web Dashboard
 After=network.target
 
 [Service]
@@ -43,7 +43,7 @@ Type=simple
 User=root
 Group=root
 WorkingDirectory=/opt/free-coding-models
-ExecStart=/usr/bin/node /opt/free-coding-models/bin/free-coding-models.js --daemon
+ExecStart=/usr/bin/node /opt/free-coding-models/bin/free-coding-models.js web
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production
@@ -53,7 +53,7 @@ Environment=FCM_PORT=19280
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl enable -q --now fcm-daemon
+systemctl enable -q --now fcm-web
 msg_ok "Created Service"
 
 motd_ssh

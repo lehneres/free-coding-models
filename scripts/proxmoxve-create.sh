@@ -42,7 +42,7 @@ function update_script() {
     exit
   fi
   msg_info "Updating ${APP} in CT ${CTID}..."
-  pct exec "$CTID" -- bash -c "cd /opt/free-coding-models && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-daemon"
+  pct exec "$CTID" -- bash -c "cd /opt/free-coding-models && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web"
   msg_ok "Updated successfully"
   exit
 }
@@ -61,8 +61,8 @@ echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
 echo -e "${INFO}${YW}Access it using the following URL:${CL}"
 echo -e "${GATEWAY}${BGN}http://${IP}:19280${CL}"
 echo ""
-echo -e "${YW}Next steps:${NC}"
+echo -e "${YW}Next steps:${CL}"
 echo "  1. pct enter $CTID"
 echo "  2. Edit /root/.free-coding-models.json and add your API keys"
-echo "  3. systemctl restart fcm-daemon"
+echo "  3. systemctl restart fcm-web"
 echo ""
