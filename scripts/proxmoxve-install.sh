@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+# Copyright (c) 2021-2026 lehneres
+# Author: lehneres (https://github.com/lehneres)
+# License: MIT | https://github.com/lehneres/free-coding-models/raw/main/LICENSE
+# Source: https://github.com/lehneres/free-coding-models
+
+source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
+color
+verb_ip6
+catch_errors
+setting_up_container
+network_check
+update_os
+
+msg_info "Installing Dependencies"
+$STD apt install -y \
+  git \
+  ca-certificates \
+  curl \
+  imagemagick
+msg_ok "Installed Dependencies"
+
+NODE_VERSION="22" setup_nodejs
+
+msg_info "Cloning free-coding-models"
+$STD git clone https://github.com/lehneres/free-coding-models.git /opt/free-coding-models
+cd /opt/free-coding-models
+msg_ok "Cloned free-coding-models"
+
+msg_info "Installing dependencies"
+$STD npm install --include=dev
+msg_ok "Installed dependencies"
+
+msg_info "Building web dashboard"
+$STD npm run build:web
+msg_ok "Built web dashboard"
+
+msg_info "Creating Service"
+cat <<EOF >/etc/systemd/system/fcm-daemon.service
+[Unit]
+Description=Free Coding Models Router Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/free-coding-models
+ExecStart=/usr/bin/node /opt/free-coding-models/bin/free-coding-models.js --daemon
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+Environment=FCM_HOST=0.0.0.0
+Environment=FCM_PORT=19280
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl enable -q --now fcm-daemon
+msg_ok "Created Service"
+
+motd_ssh
+customize
+cleanup_lxc
