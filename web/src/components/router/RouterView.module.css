@@ -391,6 +391,19 @@
   font-weight: 600;
   font-size: 14px;
   color: var(--text-primary, #e0e0e0);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.activeId {
+  color: var(--text-muted, #666);
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: 'SF Mono', monospace;
+  font-weight: normal;
 }
 
 .activeStatus {
@@ -448,6 +461,16 @@
 }
 
 .logTime { color: var(--text-muted, #555); min-width: 60px; }
+.logId {
+  color: var(--text-muted, #666);
+  font-size: 9px;
+  min-width: 32px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1px 3px;
+  border-radius: 3px;
+  text-align: center;
+  font-family: 'SF Mono', monospace;
+}
 .logOk { color: #00c864; min-width: 28px; }
 .logErr { color: #dc3545; min-width: 28px; }
 .logModel { color: var(--text-secondary, #aaa); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

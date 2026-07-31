@@ -980,7 +980,12 @@ export default function RouterView({ onClose, onToast, favorites }) {
                   {activeRequests.map((req) => (
                     <div key={req.request_id} className={styles.activeRow}>
                       <div className={styles.activeMain}>
-                        <span className={styles.activeModel}>{req.model}</span>
+                        <span className={styles.activeModel}>
+                          <span className={styles.activeId} title={`Request ID: ${req.request_id}`}>
+                            {req.request_id.slice(-4)}
+                          </span>
+                          {req.model}
+                        </span>
                         <span className={styles.activeStatus}>
                           {req.stalled ? (
                             <span className={styles.stalledText}>Stalled?</span>
@@ -1018,6 +1023,9 @@ export default function RouterView({ onClose, onToast, favorites }) {
                   <div className={styles.logList}>
                     {requestLog.map((entry, i) => (
                       <div key={i} className={styles.logRow}>
+                        <span className={styles.logId} title={`Request ID: ${entry.request_id || '—'}`}>
+                          {entry.request_id ? entry.request_id.slice(-4) : '—'}
+                        </span>
                         <span className={styles.logTime}>
                           {formatTime(entry.at)}
                         </span>
