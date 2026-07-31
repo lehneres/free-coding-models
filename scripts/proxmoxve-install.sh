@@ -58,5 +58,5 @@ msg_ok "Created Service"
 
 motd_ssh
 customize
-echo 'echo "Updating Free Coding Models..."; cd /opt/free-coding-models && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web; echo "Updated successfully"' >/usr/bin/update
+echo 'echo "Updating Free Coding Models..."; cd /opt/free-coding-models && git checkout . && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web; echo "Updated successfully"' >/usr/bin/update
 cleanup_lxc

@@ -43,8 +43,8 @@ function update_script() {
       exit
     fi
     msg_info "Updating ${APP} in CT ${CTID}..."
-    pct exec "$CTID" -- bash -c "cd /opt/free-coding-models && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web"
-    pct exec "$CTID" -- bash -c "echo 'echo \"Updating Free Coding Models...\"; cd /opt/free-coding-models && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web; echo \"Updated successfully\"' >/usr/bin/update && chmod +x /usr/bin/update"
+    pct exec "$CTID" -- bash -c "cd /opt/free-coding-models && git checkout . && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web"
+    pct exec "$CTID" -- bash -c "echo 'echo \"Updating Free Coding Models...\"; cd /opt/free-coding-models && git checkout . && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web; echo \"Updated successfully\"' >/usr/bin/update && chmod +x /usr/bin/update"
     msg_ok "Updated successfully"
   else
     if [ ! -d /opt/free-coding-models ]; then
@@ -52,7 +52,7 @@ function update_script() {
       exit
     fi
     msg_info "Updating ${APP}..."
-    cd /opt/free-coding-models && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web
+    cd /opt/free-coding-models && git checkout . && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web
     msg_ok "Updated successfully"
   fi
   exit
