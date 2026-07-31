@@ -29,21 +29,32 @@ var_unprivileged="${var_unprivileged:-1}"
 header_info "$APP"
 variables
 # Override var_install to point to our local script via path traversal trick
-var_install="../../../../../lehneres/free-coding-models/main/scripts/proxmoxve-install"
+var_install="../../../../lehneres/free-coding-models/main/scripts/proxmoxve-install"
 color
 catch_errors
 
 function update_script() {
   header_info
-  check_container_storage
-  check_container_resources
-  if ! pct exec "$CTID" -- [ -d /opt/free-coding-models ]; then
-    msg_error "No ${APP} Installation Found in CT ${CTID}!"
-    exit
+  if command -v pct >/dev/null 2>&1; then
+    check_container_storage
+    check_container_resources
+    if ! pct exec "$CTID" -- [ -d /opt/free-coding-models ]; then
+      msg_error "No ${APP} Installation Found in CT ${CTID}!"
+      exit
+    fi
+    msg_info "Updating ${APP} in CT ${CTID}..."
+    pct exec "$CTID" -- bash -c "cd /opt/free-coding-models && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web"
+    pct exec "$CTID" -- bash -c "echo 'echo \"Updating Free Coding Models...\"; cd /opt/free-coding-models && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web; echo \"Updated successfully\"' >/usr/bin/update && chmod +x /usr/bin/update"
+    msg_ok "Updated successfully"
+  else
+    if [ ! -d /opt/free-coding-models ]; then
+      msg_error "No ${APP} Installation Found!"
+      exit
+    fi
+    msg_info "Updating ${APP}..."
+    cd /opt/free-coding-models && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web
+    msg_ok "Updated successfully"
   fi
-  msg_info "Updating ${APP} in CT ${CTID}..."
-  pct exec "$CTID" -- bash -c "cd /opt/free-coding-models && git pull && npm install --include=dev && npm run build:web && systemctl restart fcm-web"
-  msg_ok "Updated successfully"
   exit
 }
 
