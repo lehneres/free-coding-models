@@ -301,6 +301,7 @@ export function normalizeRouterDashboardSnapshot(healthPayload, statsPayload) {
     models,
     routingOrder,
     requestLog,
+    activeRequests: Array.isArray(merged.activeRequests) ? merged.activeRequests : [],
   }
 }
 
@@ -1033,6 +1034,22 @@ export function renderRouterDashboard(state, deps = {}) {
 
   // ── Token Summary (compact, visual) ─────────────────────────────────────────
   lines.push(`  ${themeColors.textBold('📊 Tokens')}  ${themeColors.dim('Today:')} ${themeColors.info(formatTokenTotalCompact(snapshot.tokens.today.total_tokens))} ${themeColors.dim(`(${snapshot.tokens.today.requests} req)`)}  ${themeColors.dim('Lifetime:')} ${themeColors.info(formatTokenTotalCompact(snapshot.tokens.all_time.total_tokens))} ${themeColors.dim(`(${snapshot.tokens.all_time.requests} req)`)}`)
+
+  // ── Active Requests ────────────────────────────────────────────────────────
+  lines.push('')
+  lines.push(`  ${themeColors.warningBold('⚡ Active Requests')} ${themeColors.dim(`(${snapshot.activeRequests?.length || 0})`)}`)
+  if (snapshot.activeRequests?.length > 0) {
+    for (const req of snapshot.activeRequests) {
+      const model = compactText(req.model, 24)
+      const current = compactText(req.current_model || 'Routing...', 24)
+      const duration = formatRouterDuration(Math.floor((Date.now() - req.started_at) / 1000))
+      const status = req.stalled ? themeColors.errorBold('STALLED?') : themeColors.success('Processing...')
+      const tokens = req.stream ? ` ${themeColors.dim(`(${req.tokens} tok)`)}` : ''
+      lines.push(`  ${themeColors.dim('•')} ${model} → ${themeColors.info(current)} ${status}${tokens} ${themeColors.dim(duration)}`)
+    }
+  } else {
+    lines.push(`  ${themeColors.dim('No active requests')}`)
+  }
 
   // ── Live Request Log (compact) ──────────────────────────────────────────────
   const requestRows = requestLogRows(state, snapshot)

@@ -876,6 +876,7 @@ class RouterRuntime {
     this.modelCatalog = this.buildModelCatalog()
     this.probeWindows = new Map()
     this.circuit = new Map()
+    this.activeRequests = new Map()
     this.requestLog = []
     this.sseClients = new Set()
     this.lastProbeAt = null
@@ -1526,6 +1527,17 @@ class RouterRuntime {
         return Boolean(cb?.authError || cb?.stale)
       }).length,
       inFlight: this.inFlight,
+      activeRequests: Array.from(this.activeRequests.values()).map(r => ({
+        request_id: r.request_id,
+        model: r.model,
+        stream: r.stream,
+        started_at: r.started_at,
+        last_activity_at: r.last_activity_at,
+        current_model: r.current_model,
+        attempts: r.attempts,
+        tokens: r.tokens,
+        stalled: Date.now() - r.last_activity_at > 5000 // UI hint for "might be stalling"
+      })),
       shuttingDown: this.shuttingDown,
       probeMode: router.probeMode,
       lastProbeAt: this.lastProbeAt ? new Date(this.lastProbeAt).toISOString() : null,
@@ -2003,6 +2015,16 @@ class RouterRuntime {
     }
 
     this.inFlight += 1
+    this.activeRequests.set(requestId, {
+      request_id: requestId,
+      model: body.model,
+      stream: body.stream === true,
+      started_at: Date.now(),
+      last_activity_at: Date.now(),
+      current_model: null,
+      attempts: [],
+      tokens: 0
+    })
     try {
       const tried = []
       const blockedProviders = new Set()
@@ -2069,11 +2091,18 @@ class RouterRuntime {
       })
     } finally {
       this.inFlight -= 1
+      this.activeRequests.delete(requestId)
     }
   }
 
   async proxyJsonRequest({ req, res, body, candidate, requestId, attemptIndex }) {
     const key = candidate.key
+    const activeReq = this.activeRequests.get(requestId)
+    if (activeReq) {
+      activeReq.current_model = key
+      activeReq.last_activity_at = Date.now()
+      if (!activeReq.attempts.includes(key)) activeReq.attempts.push(key)
+    }
     const apiKey = this.getApiKeyForProvider(candidate.provider)
     // 📖 Guard: bail early if provider URL cannot be resolved
     const providerUrl = resolveProviderUrl(candidate.provider)
@@ -2237,6 +2266,12 @@ class RouterRuntime {
 
   async proxyStreamingRequest({ req, res, body, candidate, requestId, attemptIndex }) {
     const key = candidate.key
+    const activeReq = this.activeRequests.get(requestId)
+    if (activeReq) {
+      activeReq.current_model = key
+      activeReq.last_activity_at = Date.now()
+      if (!activeReq.attempts.includes(key)) activeReq.attempts.push(key)
+    }
     const apiKey = this.getApiKeyForProvider(candidate.provider)
     // 📖 Guard: bail early if provider URL cannot be resolved
     const providerUrl = resolveProviderUrl(candidate.provider)
@@ -2358,6 +2393,7 @@ class RouterRuntime {
       }
       sentToClient = true
       res.write(firstChunkBuffer)
+      if (activeReq) activeReq.last_activity_at = Date.now()
 
       while (!res.writableEnded) {
         const chunk = await this.readStreamChunkWithTimeout(reader)
@@ -2365,6 +2401,10 @@ class RouterRuntime {
         // 📖 Guard: ensure chunk value is safe for Buffer conversion
         const buf = Buffer.isBuffer(chunk.value) ? chunk.value : Buffer.from(chunk.value)
         res.write(buf)
+        if (activeReq) {
+          activeReq.last_activity_at = Date.now()
+          activeReq.tokens += 1 // Increment a counter to show progress
+        }
       }
 
       this.markSuccess(key, latencyMs)
