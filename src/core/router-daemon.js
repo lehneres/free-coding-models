@@ -2411,15 +2411,18 @@ class RouterRuntime {
           this.logger.warn(`Stream stall after partial response from ${key}, attempting failover`, { request_id: requestId, reason })
           if (!res.writableEnded) {
             try {
-              const errorPayload = JSON.stringify({
-                error: {
-                  message: `Stream truncated by router due to upstream ${reason}; failing over to next model.`,
-                  type: 'stream_error',
-                  code: 'fcm_stream_failover',
-                  reason,
-                },
+              // 📖 Issue #137: failover even after a partial response.
+              // 📖 We use a regular chat delta instead of an error payload so
+              // 📖 that clients (which often abort on "error") stay connected.
+              const failoverMsg = `\n\n> [!CAUTION]\n> Stream truncated by router due to upstream ${reason}; failing over to next model.\n\n`
+              const deltaPayload = JSON.stringify({
+                choices: [{
+                  index: 0,
+                  delta: { content: failoverMsg },
+                  finish_reason: null,
+                }],
               })
-              res.write(`data: ${errorPayload}\n\n`)
+              res.write(`data: ${deltaPayload}\n\n`)
             } catch { /* best-effort */ }
           }
           return { done: false, failoverToNext: true, reason: `stream_stall_${reason}` }
