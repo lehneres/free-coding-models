@@ -369,12 +369,12 @@ function normalizeRouterCircuitBreaker(circuitBreaker) {
   }
 }
 
-function normalizeRouterFailover(failover) {
+function normalizeRouterFailover(failover, routerFallback = {}) {
   const safeFailover = isPlainObject(failover) ? failover : {}
   return {
-    maxRetries: normalizePositiveInteger(safeFailover.maxRetries, DEFAULT_ROUTER_SETTINGS.failover.maxRetries, { min: 1, max: 10 }),
-    streamStallTimeoutMs: normalizePositiveInteger(safeFailover.streamStallTimeoutMs, DEFAULT_ROUTER_SETTINGS.failover.streamStallTimeoutMs, { min: 1000, max: 120000 }),
-    requestTimeoutMs: normalizePositiveInteger(safeFailover.requestTimeoutMs, DEFAULT_ROUTER_SETTINGS.failover.requestTimeoutMs, { min: 1000, max: 300000 }),
+    maxRetries: normalizePositiveInteger(safeFailover.maxRetries ?? routerFallback.maxRetries, DEFAULT_ROUTER_SETTINGS.failover.maxRetries, { min: 1, max: 10 }),
+    streamStallTimeoutMs: normalizePositiveInteger(safeFailover.streamStallTimeoutMs ?? routerFallback.streamStallTimeoutMs, DEFAULT_ROUTER_SETTINGS.failover.streamStallTimeoutMs, { min: 1000, max: 120000 }),
+    requestTimeoutMs: normalizePositiveInteger(safeFailover.requestTimeoutMs ?? routerFallback.requestTimeoutMs, DEFAULT_ROUTER_SETTINGS.failover.requestTimeoutMs, { min: 1000, max: 300000 }),
   }
 }
 
@@ -426,7 +426,7 @@ export function normalizeRouterConfig(router) {
     probeMode,
     probeIntervals: normalizeRouterIntervals(router.probeIntervals),
     circuitBreaker: normalizeRouterCircuitBreaker(router.circuitBreaker),
-    failover: normalizeRouterFailover(router.failover),
+    failover: normalizeRouterFailover(router.failover, router),
     scoring: normalizeRouterScoring(router.scoring),
     logLevel,
     prePrompt: normalizeRouterPrePrompt(router.prePrompt),
@@ -551,10 +551,15 @@ export function buildPersistedConfig(incomingConfig, diskConfig = _emptyConfig()
     favorites: options.replaceFavorites === true
       ? [...normalizedIncoming.favorites]
       : mergeOrderedUniqueStrings(normalizedIncoming.favorites, normalizedDisk.favorites),
-    telemetry: {
-      ...normalizedDisk.telemetry,
-      ...normalizedIncoming.telemetry,
-    },
+    telemetry: isPlainObject(incomingConfig.telemetry)
+      ? { ...normalizedDisk.telemetry, ...normalizedIncoming.telemetry }
+      : cloneConfigValue(normalizedDisk.telemetry),
+    sync: isPlainObject(incomingConfig.sync)
+      ? { ...normalizedDisk.sync, ...normalizedIncoming.sync }
+      : cloneConfigValue(normalizedDisk.sync),
+    updater: isPlainObject(incomingConfig.updater)
+      ? { ...normalizedDisk.updater, ...normalizedIncoming.updater }
+      : cloneConfigValue(normalizedDisk.updater),
     // 📖 Managed endpoint installs sometimes need an exact snapshot so stale disk
     // 📖 records do not come back after a fresh install/refresh pass.
     endpointInstalls: options.replaceEndpointInstalls === true
@@ -562,7 +567,32 @@ export function buildPersistedConfig(incomingConfig, diskConfig = _emptyConfig()
       : mergeEndpointInstalls(normalizedDisk.endpointInstalls, normalizedIncoming.endpointInstalls),
     // 📖 Profile system removed - always null
   }
-  if (Object.prototype.hasOwnProperty.call(normalizedIncoming, 'router')) {
+  if (isPlainObject(incomingConfig.router) && isPlainObject(normalizedDisk.router)) {
+    // 📖 Deep merge router settings so partial updates (e.g. from telemetry auto-save)
+    // 📖 do not reset custom failover/scoring/intervals to defaults.
+    merged.router = {
+      ...normalizedDisk.router,
+      ...normalizedIncoming.router,
+      failover: {
+        ...normalizedDisk.router.failover,
+        ...(isPlainObject(incomingConfig.router.failover) ? normalizedIncoming.router.failover : {}),
+        // 📖 Also support top-level maxRetries/timeout overrides from incoming RAW config
+        ...(typeof incomingConfig.router.maxRetries === 'number' ? { maxRetries: incomingConfig.router.maxRetries } : {}),
+      },
+      probeIntervals: {
+        ...normalizedDisk.router.probeIntervals,
+        ...(isPlainObject(incomingConfig.router.probeIntervals) ? normalizedIncoming.router.probeIntervals : {}),
+      },
+      circuitBreaker: {
+        ...normalizedDisk.router.circuitBreaker,
+        ...(isPlainObject(incomingConfig.router.circuitBreaker) ? normalizedIncoming.router.circuitBreaker : {}),
+      },
+      scoring: {
+        ...normalizedDisk.router.scoring,
+        ...(isPlainObject(incomingConfig.router.scoring) ? normalizedIncoming.router.scoring : {}),
+      },
+    }
+  } else if (Object.prototype.hasOwnProperty.call(incomingConfig, 'router')) {
     merged.router = cloneConfigValue(normalizedIncoming.router)
   } else if (Object.prototype.hasOwnProperty.call(normalizedDisk, 'router')) {
     merged.router = cloneConfigValue(normalizedDisk.router)
