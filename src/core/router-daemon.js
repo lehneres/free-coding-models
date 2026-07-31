@@ -112,7 +112,7 @@ const MAX_PROBE_WINDOW = 20
 const TOKEN_FLUSH_INTERVAL_MS = 60000
 const CONFIG_RELOAD_INTERVAL_MS = 10000
 const STATS_RETENTION_DAYS = 90
-const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503])
+const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504])
 const AUTH_STATUS_CODES = new Set([401, 403])
 const RATE_LIMIT_HEADER_NAMES = [
   'retry-after',
@@ -1968,7 +1968,7 @@ class RouterRuntime {
 
     const candidates = this.getRoutingCandidates(set)
     const maxRetries = this.routerConfig().failover.maxRetries
-    const maxAttempts = Math.max(1, maxRetries)
+    const maxAttempts = 1 + Math.max(0, maxRetries)
     if (candidates.length === 0) {
       const health = this.getModelHealth(set)
       const quotaExhausted = [...this.quotaExhausted].filter((key) => set.models.some((model) => modelKey(model.provider, model.model) === key))
@@ -3646,10 +3646,11 @@ async function ensureRouterConfigForDaemon(config, skipSave = false) {
   }
   config.router = normalizeRouterConfig({
     ...DEFAULT_ROUTER_SETTINGS,
+    ...(config.router || {}),
     enabled: true,
     onboardingSeen: true,
     activeSet: activeSet.name,
-    sets: { [activeSet.name]: activeSet },
+    sets: { ...(config.router?.sets || {}), [activeSet.name]: activeSet },
   })
   if (!skipSave) saveConfig(config)
   return config.router
